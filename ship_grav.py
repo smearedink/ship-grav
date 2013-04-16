@@ -5,7 +5,6 @@ pygame.init()
 
 ballsound = pygame.mixer.Sound("ping.wav")
 wallsound = pygame.mixer.Sound("ping.wav")
-#shipsound = pygame.mixer.Sound("spaceship.aiff")
 
 width, height = 1024, 768
 size = np.array([width, height])
@@ -51,6 +50,10 @@ class Ship:
         self.myrect = pygame.draw.circle(self.mysurf, col,\
             (self.radius, self.radius), self.radius)
 
+    def outsideWalls(self, pos):
+        return (pos[0] - self.radius < 0) or (pos[0] + self.radius > width)\
+            or (pos[1] - self.radius < 0) or (pos[1] + self.radius > height)
+
     def update(self, collision_checklist=[]):
         """
         collision_checklist is a list of Attractor objects that you'd like
@@ -61,21 +64,29 @@ class Ship:
         """
         self.vel += self.acc*dt
         new_pos = self.pos + self.vel*dt
-        if new_pos[0] - self.radius < 0:
-            #print "you've gone off the left"
-            self.vel[0] *= -1
-            wallsound.play()
-        elif new_pos[0] + self.radius > width:
-            #print "you've gone off the right"
-            self.vel[0] *= -1
-            wallsound.play()
-        if new_pos[1] - self.radius < 0:
-            #print "you've gone off the top"
-            self.vel[1] *= -1
-            wallsound.play()
-        elif new_pos[1] + self.radius > height:
-            #print "you've gone off the bottom"
-            self.vel[1] *= -1
+        if self.outsideWalls(new_pos):
+            x1, y1 = self.pos
+            x2, y2 = new_pos
+            if new_pos[0] - self.radius < 0:
+                new_x = self.radius
+                new_y = y1+(new_x-x1)*(y2-y1)/(x2-x1) 
+                new_pos = np.array([new_x, new_y])
+                self.vel[0] *= -1
+            elif new_pos[0] + self.radius > width:
+                new_x = width - self.radius
+                new_y = y1+(new_x-x1)*(y2-y1)/(x2-x1) 
+                new_pos = np.array([new_x, new_y])
+                self.vel[0] *= -1
+            if new_pos[1] - self.radius < 0:
+                new_y = self.radius
+                new_x = x1+(new_y-y1)*(x2-x1)/(y2-y1) 
+                new_pos = np.array([new_x, new_y])
+                self.vel[1] *= -1
+            elif new_pos[1] + self.radius > height:
+                new_y = height - self.radius
+                new_x = x1+(new_y-y1)*(x2-x1)/(y2-y1) 
+                new_pos = np.array([new_x, new_y])
+                self.vel[1] *= -1
             wallsound.play()
         if collision_checklist:
             for attractor in collision_checklist:
@@ -100,7 +111,6 @@ class Ship:
                     self.resetAcc()
                     self.addAccDueTo(attractor)
                     self.vel += self.acc*dt*dist_factor
-                    # need to figure out what to _actually_ do with vel
                     dx = new_pos[0] - attractor.pos[0]
                     dy = new_pos[1] - attractor.pos[1]
                     fac = R/np.sqrt(dx*dx+dy*dy)
@@ -190,11 +200,6 @@ while 1:
             ship.addVel(0., -0.1)
         if keys[pygame.K_DOWN]:
             ship.addVel(0., 0.1)
-        #if shipsound.get_num_channels() == 0:
-        #    shipsound.play(-1)
-    #elif shipsound.get_num_channels() > 0:
-    #else:
-    #    shipsound.stop()
 
     ship.resetAcc()
     for att in atts:
